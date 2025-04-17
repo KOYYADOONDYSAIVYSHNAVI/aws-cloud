@@ -1,43 +1,75 @@
-# gas-framework
-An enhanced web framework (based on [Flask](http://flask.pocoo.org/)) for use in the capstone project. Adds robust user authentication (via [Globus Auth](https://docs.globus.org/api/auth)), modular templates, and some simple styling based on [Bootstrap](http://getbootstrap.com/).
+# AWS
 
-Directory contents are as follows:
-* `/web` - The GAS web app files
-* `/ann` - Annotator files
-* `/util` - Utility scripts for notifications, archival, and restoration
-* `/aws` - AWS user data files
+A secure, scalable web framework built on **Flask** that supports user authentication via **Globus Auth**, modular UI components, and seamless integration with AWS services for job processing, archiving, and restoration. Styled with **Bootstrap** for a clean user experience.
 
-# Description of archive process
-## Message Processing - 
+---
 
-### Job Completion in run.py:
-When a job completes, run.py updates DynamoDB and checks the user's role.
-If the user is a free_user, it sends an SNS notification to trigger archiving.
+## 📁 Directory Structure
 
-### Archiving Trigger in archive.py:
-The archive.py script, upon receiving an SQS message triggered by the SNS notification, processes the message to extract job details - job_id, s3_key, completion_time.
-It waits for at least 5 minutes after job completion to ensure any final processing is complete.
-If 5 minutes have passed, then it archives the file uploaded to the glacier vault (archive_to_glacier(s3_bucket, s3_key, job_id)).
-It first downloads the file from the s3 bucket and uploads to glacier vault and then the archive id is updated in dyanmodb with column as results_file_archive_id.
-Finally it deletes the file from the S3 bucket, ensuring efficient storage management.
+* `/web` - Core web application logic
+* `/ann` - Annotation processing modules
+* `/util` - Utility scripts (notifications, archival, restore)
+* `/aws` - AWS configurations and user data files
 
-# Description of restore process
-### Subscription and Role Update in views.py:
-User subscribes then the user_role updated to "Premium".
-Query the DynamoDB table to retrieve items related to the user, extracting job_id, user_id, and file_name.
-Publishes SNS restore notification.
 
-### Restore Process in restore.py:
-Poll SQS then Retrieve archive details from DynamoDB.
-Initiate Glacier retrieval (expedited first, then standard if necessary).
-Send an SNS notification with the details (archive_id, user_id, job_id, file_name) to trigger the thaw process.
+---
 
-### Thaw Process in thaw.py:
-Poll SQS, For each message, extract restore_job_id, job_id, archive_id, user_id, and file_name.
-Then monitors job status.
-Retrieves job output from Glacier.
-Move file to S3 bucket.
-Cleanup Glacier and SQS.
+## ⚙️ Job Processing & Archiving
 
-### File Download:
-Premium user downloads the restored file from S3.
+### 📝 Job Completion (`run.py`)
+- Updates job metadata in **DynamoDB** upon completion.
+- If the job belongs to a `free_user`, sends an **SNS** notification to trigger the archival pipeline.
+
+### 📦 Archiving Workflow (`archive.py`)
+- Listens to **SQS** messages triggered by SNS.
+- Extracts job metadata: `job_id`, `s3_key`, `completion_time`.
+- Waits 5 minutes post-completion before:
+  - Downloading the file from **S3**
+  - Uploading it to **Amazon Glacier**
+  - Storing the `archive_id` in DynamoDB under `results_file_archive_id`
+  - Deleting the file from S3 to free up space
+
+---
+
+## 🔄 File Restoration Flow
+
+### 💼 Role Upgrade & Subscription (`views.py`)
+- Upgrades user to "Premium" upon subscription.
+- Queries **DynamoDB** for the user’s archived jobs.
+- Publishes an SNS message to begin the restore process.
+
+### ♻️ Restore Phase (`restore.py`)
+- Listens for SQS messages containing restore requests.
+- Fetches archive details from DynamoDB.
+- Tries **Expedited** retrieval from Glacier, falls back to **Standard** if needed.
+- Sends an SNS message with restore metadata.
+
+### 🔓 Thawing Archived Files (`thaw.py`)
+- Monitors SQS for thaw requests.
+- Extracts and tracks restore job status.
+- Retrieves the file from Glacier, moves it back to **S3**.
+- Cleans up Glacier and deletes the processed SQS message.
+
+---
+
+## ⬇️ File Access
+
+Premium users can directly download their restored results from the S3 bucket via the web app interface.
+
+---
+
+## 🛠 Tech Stack
+
+- **Backend**: Python, Flask  
+- **Authentication**: Globus Auth  
+- **Cloud Services**: AWS S3, Glacier, SNS, SQS, DynamoDB  
+- **Frontend**: Jinja2 Templates, Bootstrap  
+- **Database**: AWS DynamoDB
+
+---
+
+## 🧪 Future Enhancements
+
+- Add user dashboard with analytics
+- Implement access control via RBAC
+- Enable progress tracking for restoration jobs
