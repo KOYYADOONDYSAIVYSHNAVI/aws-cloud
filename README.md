@@ -66,10 +66,3 @@ Premium users can directly download their restored results from the S3 bucket vi
 - **Frontend**: Jinja2 Templates, Bootstrap  
 - **Database**: AWS DynamoDB
 
----
-
-## 🧪 Future Enhancements
-
-- Add user dashboard with analytics
-- Implement access control via RBAC
-- Enable progress tracking for restoration jobs
